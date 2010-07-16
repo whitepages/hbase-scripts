@@ -23,7 +23,7 @@ import org.apache.hadoop.fs.FileSystem
 import org.apache.commons.logging.LogFactory
 
 # Name of this script
-NAME = "find_overlapping_regions"
+NAME = "find_duplicate_regions"
 
 # Print usage for this script
 def usage
@@ -75,13 +75,22 @@ require 'set'
 wanted_table = HTable.new(c, tableName)
 keys = wanted_table.getStartEndKeys
 start_keys = keys.first.map {|x| String.from_java_bytes x }
+end_keys = keys.second .map {|x| String.from_java_bytes x }
 
-found_keys = Set.new
+found_start_keys = Set.new
+found_end_keys = Set.new
 
 start_keys.each do |start_key|
-	if found_keys.member? start_key
+	if found_start_keys.member? start_key
 		print "Duplicate start key: %s\n" % start_key
 	else
-		found_keys.add start_key
+		found_start_keys.add start_key
+	end
+end
+end_keys.each do |end_key|
+	if found_end_keys.member? end_key
+		print "Duplicate end key: %s\n" % end_key
+	else
+		found_end_keys.add end_key
 	end
 end
