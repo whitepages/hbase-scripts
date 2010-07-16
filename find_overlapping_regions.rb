@@ -94,3 +94,10 @@ end_keys.each do |end_key|
 		found_end_keys.add end_key
 	end
 end
+
+print "Orphan start regions:\n"
+p found_start_keys - found_end_keys
+
+print "Dangling end keys:\n"
+p found_end_keys - found_start_keys
+
