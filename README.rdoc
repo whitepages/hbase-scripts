@@ -1,0 +1,68 @@
+= Overview
+
+This is a collection of administrative scripts to find and fix problems with
+HBase clusters.
+
+These are based on bin/add_table.rb from hbase 0.20.3.
+
+= Finding missing regions
+
+This is just a health check - it lists any regions that aren't listed in .META.
+by looking for end keys that don't have a corresponding start key.
+
+== Usage
+
+  /path/to/hbase/bin/hbase org.jruby.Main ./find_missing_regions.rb /hdfs/path/to/table
+
+For example, if you have your hbase data in /hbase/ on HDFS, and you want to
+find missing regions in the 'mytable' table:
+
+  /path/to/hbase/bin/hbase org.jruby.Main ./find_missing_regions.rb /hbase/mytable
+
+= Fixing missing regions
+
+This does the same as find_missing_regions.rb, however, it additionally:
+
+* crawls HDFS to find the files corresponding to the missing regions
+* inserts the regions back into .META.
+
+== WARNING
+
+After inserting a missing region, all regions after the missing region are
+unreachable for a short while (< 40 seconds when we tried this, but your 
+milage may vary), eg if you have the following regions:
+
+* ^-a
+* a-b
+* b-c
+* c-$
+
+But .META. only lists:
+
+* ^-a
+* b-c
+* c-$
+
+After inserting 'a-b' again, 'b-c' and 'c-$' will be unreachable for a short while.
+
+== Usage
+
+  /path/to/hbase/bin/hbase org.jruby.Main ./fix_missing_regions.rb /hdfs/path/to/table
+
+= Finding overlapping regions
+
+This is just a diagnostic tool; it doesn't fix the problem. This picks up
+situations like when the following regions are in .META.:
+
+* ^-a
+* a-c
+* a-b
+* b-c
+* c-$
+
+a-b and b-c overlap with a-c in this case.
+
+
+== Usage
+
+  /path/to/hbase/bin/hbase org.jruby.Main ./find_overlapping_regions.rb TableName
