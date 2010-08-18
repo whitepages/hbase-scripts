@@ -3,7 +3,8 @@
 This is a collection of administrative scripts to find and fix problems with
 HBase clusters.
 
-These are based on bin/add_table.rb from hbase 0.20.3.
+These are based on bin/add_table.rb from hbase 0.20.3, with the following exceptions:
+ - list_regions.rb (from scratch)
 
 = Finding missing regions
 
@@ -66,3 +67,17 @@ a-b and b-c overlap with a-c in this case.
 == Usage
 
   /path/to/hbase/bin/hbase org.jruby.Main ./find_overlapping_regions.rb TableName
+
+= Listing regions
+
+list_regions.rb can list all regions in a table, their online/offline state, and what server they are on.
+It also optionally filters by online/offline state.
+
+This reads directly from .META., so is handy for checking that a 'disable' has really worked across all
+the region servers - for a use case, see: http://web.archiveorange.com/archive/v/gMxNAJ9pszuhbGFmgyE9
+
+== Usage
+
+  /path/to/hbase/bin/hbase org.jruby.Main ./list_regions.rb TableName [all|online|offline]
+
+If none out of all, online, or offline is specified, the default is 'all' (unfiltered).
