@@ -64,8 +64,10 @@ scanner = table.getScanner scan
 print "Finding %s regions in %s...\n" % [WANT, TABLE_NAME]
 while row = scanner.next
 	region = Writables.getHRegionInfo row.getValue(REGION_INFO_COLUMN)
-	server = String.from_java_bytes row.getValue(SERVER_COLUMN)
 	next unless Bytes.equals(region.getTableDesc.getName, JAVA_TABLE_NAME)
+	server_bytes = row.getValue(SERVER_COLUMN)
+	server = server_bytes ? String.from_java_bytes(server_bytes) : 'no server'
+
 	table =  String.from_java_bytes region.getTableDesc.getName
 	if filter.accepts? region
 		print "%s is %s (%s)\n"  % [region.getRegionNameAsString, region.isOffline ? 'offline' : 'online', server]
