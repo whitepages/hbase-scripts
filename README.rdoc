@@ -81,3 +81,21 @@ the region servers - for a use case, see: http://web.archiveorange.com/archive/v
   /path/to/hbase/bin/hbase org.jruby.Main ./list_regions.rb TableName [all|online|offline]
 
 If none out of all, online, or offline is specified, the default is 'all' (unfiltered).
+
+= Finding online regions of a table
+
+scrape_online_regions.rb lists all the regions that are online in a specified table for a given list of
+regionserver hosts. The regionservers must be running the web interface on port 60030.
+
+This scrapes the web interface, as we had a situation where .META. said every single region for our table
+was offline, however, the region servers themselves were still serving some regions - this led to problems
+after doing an alter. In other words:
+
+ - if you want to check what the master thinks, use list_regions.rb
+ - if you want to check what the region servers think, use scrape_online_regions.rb
+
+== Usage
+
+This is a regular ruby script, not a JRuby script.
+
+  ./scrape_online_regions.rb MyTableName host1 host2 host3 ...
