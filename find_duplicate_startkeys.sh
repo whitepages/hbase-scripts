@@ -1,10 +1,9 @@
-# Script adds a table back to a running hbase.
-# Currently only works on a copied aside table.
-# You cannot parse arbitrary table name.
+# Script to find overlapping regions on a hbase table
+# You can run this script on both an online and offline table
 # 
 # To see usage for this script, run: 
 #
-#  ${HBASE_HOME}/bin/hbase org.jruby.Main addtable.rb
+#  ${HBASE_HOME}/bin/hbase org.jruby.Main find_overlapping_regions.rb
 #
 include Java
 import org.apache.hadoop.hbase.util.Bytes
@@ -21,14 +20,13 @@ import org.apache.hadoop.hbase.util.Writables
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.fs.FileSystem
 import org.apache.commons.logging.LogFactory
-import org.apache.hadoop.io.WritableComparator
 
 # Name of this script
-NAME = "find_duplicate_regions"
+NAME = "find_overlapping_regions"
 
 # Print usage for this script
 def usage
-  puts 'Usage: %s.rb TABLE_NAME' % NAME
+  puts 'Usage: %s.rb TABLE_PATH' % NAME
   exit!
 end
 
@@ -64,33 +62,40 @@ end
 HTableDescriptor.isLegalTableName(tableName.to_java_bytes)
 
 # Figure locations under hbase.rootdir 
+# Move directories into place; be careful not to overwrite.
 rootdir = Path.new('/hbase')
 tableDir = fs.makeQualified(Path.new(rootdir, tableName))
 
-# Clean mentions of table from .META.
+# Scan the .META. and find overlapping regions
 LOG.info("Finding regions of " + tableName + " in .META.")
 require 'set'
 
 wanted_table = HTable.new(c, tableName)
 keys = wanted_table.getStartEndKeys
-
 start_keys = keys.first.map {|x| String.from_java_bytes x }
 end_keys = keys.second .map {|x| String.from_java_bytes x }
 
-previousEndKey = ""
-previousKey = ""
+found_start_keys = Set.new
+found_end_keys = Set.new
 
-start_keys.zip(end_keys).each do |startKey, endKey|
-  regionName = tableName + "," + startKey + "," + endKey
-  # If current start key is ordered before the last end key, these are overlapping!
-  if (startKey <=> previousEndKey) < 0 then
-    puts "These overlap: " + previousKey + ":" + regionName
-  end
-  # Inversly if it's after then there's a gap of missing keys
-  if (startKey <=> previousEndKey) > 0 then
-    puts "These have a gap between them: " + previousKey + ":" + regionName
-  end
-
-  previousEndKey = endKey
-  previousKey = regionName
+start_keys.each do |start_key|
+	if found_start_keys.member? start_key
+		print "Duplicate start key: %s\n" % start_key
+	else
+		found_start_keys.add start_key
+	end
 end
+end_keys.each do |end_key|
+	if found_end_keys.member? end_key
+		print "Duplicate end key: %s\n" % end_key
+	else
+		found_end_keys.add end_key
+	end
+end
+
+print "Orphan start regions:\n"
+p found_start_keys - found_end_keys
+
+print "Dangling end keys:\n"
+p found_end_keys - found_start_keys
+
