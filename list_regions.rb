@@ -54,17 +54,19 @@ JAVA_TABLE_NAME=TABLE_NAME.to_java_bytes
 
 HBASE_VERSION = '0.90.4' # TODO get this from config/introspection
 
+REGION_INFO_COLUMN_RB = 'info:regioninfo'
+SERVER_COLUMN_RB      = 'info:server'
+REGION_INFO_COLUMN    = REGION_INFO_COLUMN_RB.to_java_bytes
+SERVER_COLUMN         = SERVER_COLUMN_RB.to_java_bytes
+
 if HBASE_VERSION >= '0.90.4' # FIXME: don't use string compare semantics
-  REGION_INFO_COLUMN = 'info:regioninfo'.to_java_bytes
-  REGION_INFO_FAMILY = 'info'.to_java_bytes 
-  REGION_INFO_QUALIFIER = 'regioninfo'.to_java_bytes
-  REGION_INFO_ARGS = [ REGION_INFO_FAMILY, REGION_INFO_QUALIFIER ]
+  REGION_INFO_ARGS = REGION_INFO_COLUMN_RB.split(':').map{|s| s.to_java_bytes}
+  SERVER_ARGS      = SERVER_COLUMN_RB.split(':').map{|s| s.to_java_bytes}
 else
-  REGION_INFO_COLUMN = 'info:regioninfo'.to_java_bytes
   REGION_INFO_ARGS = [ REGION_INFO_COLUMN ]
+  SERVER_ARGS      = [ SERVER_COLUMN ]
 end
 
-SERVER_COLUMN = 'info:server'.to_java_bytes
 
 table = HTable.new config, '.META.'.to_java_bytes
 
@@ -75,15 +77,18 @@ scanner = table.getScanner scan
 
 print "Finding %s regions in %s...\n" % [WANT, TABLE_NAME]
 while row = scanner.next
-	region = Writables.getHRegionInfo row.getValue( *REGION_INFO_ARGS )
-	next unless Bytes.equals(region.getTableDesc.getName, JAVA_TABLE_NAME)
-	server_bytes = row.getValue(SERVER_COLUMN)
-	server = server_bytes ? String.from_java_bytes(server_bytes) : 'no server'
+  region = Writables.getHRegionInfo row.getValue( *REGION_INFO_ARGS )
+  next unless Bytes.equals(region.getTableDesc.getName, JAVA_TABLE_NAME)
 
-	table =  String.from_java_bytes region.getTableDesc.getName
-	if filter.accepts? region
-		print "%s is %s (%s)\n"  % [region.getRegionNameAsString, region.isOffline ? 'offline' : 'online', server]
-	end
+  server_bytes = row.getValue( *SERVER_ARGS )
+  server = server_bytes ? String.from_java_bytes(server_bytes) : 'no server'
+
+  table =  String.from_java_bytes region.getTableDesc.getName
+
+  if filter.accepts? region
+    print "%s is %s (%s)\n"  % [region.getRegionNameAsString, region.isOffline ? 'offline' : 'online', server]
+  end
 end
+
 scanner.close
 print "Finished.\n"
