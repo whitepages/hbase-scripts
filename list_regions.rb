@@ -51,7 +51,19 @@ import java.util.ArrayList
 config = HBaseConfiguration.new
 config.set 'fs.default.name', config.get(HConstants::HBASE_DIR)
 JAVA_TABLE_NAME=TABLE_NAME.to_java_bytes
-REGION_INFO_COLUMN = 'info:regioninfo'.to_java_bytes
+
+HBASE_VERSION = '0.90.4' # TODO get this from config/introspection
+
+if HBASE_VERSION >= '0.90.4' # FIXME: don't use string compare semantics
+  REGION_INFO_COLUMN = 'info:regioninfo'.to_java_bytes
+  REGION_INFO_FAMILY = 'info'.to_java_bytes 
+  REGION_INFO_QUALIFIER = 'regioninfo'.to_java_bytes
+  REGION_INFO_ARGS = [ REGION_INFO_FAMILY, REGION_INFO_QUALIFIER ]
+else
+  REGION_INFO_COLUMN = 'info:regioninfo'.to_java_bytes
+  REGION_INFO_ARGS = [ REGION_INFO_COLUMN ]
+end
+
 SERVER_COLUMN = 'info:server'.to_java_bytes
 
 table = HTable.new config, '.META.'.to_java_bytes
@@ -63,7 +75,7 @@ scanner = table.getScanner scan
 
 print "Finding %s regions in %s...\n" % [WANT, TABLE_NAME]
 while row = scanner.next
-	region = Writables.getHRegionInfo row.getValue(REGION_INFO_COLUMN)
+	region = Writables.getHRegionInfo row.getValue( *REGION_INFO_ARGS )
 	next unless Bytes.equals(region.getTableDesc.getName, JAVA_TABLE_NAME)
 	server_bytes = row.getValue(SERVER_COLUMN)
 	server = server_bytes ? String.from_java_bytes(server_bytes) : 'no server'
